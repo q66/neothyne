@@ -298,11 +298,11 @@ void client::inputMouseMove() {
 void client::inputGetCommands(u::vector<clientCommands> &commands) {
     u::map<u::string, int> &keyState = neoKeyState();
     commands.clear();
-    if (keyState["W"])      commands.push_back(kCommandForward);
-    if (keyState["S"])      commands.push_back(kCommandBackward);
-    if (keyState["A"])      commands.push_back(kCommandLeft);
-    if (keyState["D"])      commands.push_back(kCommandRight);
-    if (keyState["Space"])  commands.push_back(kCommandJump);
+    if (keyState["W"])          commands.push_back(kCommandForward);
+    if (keyState["S"])          commands.push_back(kCommandBackward);
+    if (keyState["A"])          commands.push_back(kCommandLeft);
+    if (keyState["D"])          commands.push_back(kCommandRight);
+    if (keyState["Space"])      commands.push_back(kCommandJump);
     if (keyState["Left Shift"]) commands.push_back(kCommandCrouch);
 }
 
