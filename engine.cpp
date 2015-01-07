@@ -486,91 +486,14 @@ void neoFatalError(const char *error) {
     abort();
 }
 
-// So we don't need to depend on SDL_main we provide our own
-#ifdef _WIN32
-#include <ctype.h>
-#include "u_vector.h"
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw) {
-    (void)hInst;
-    (void)hPrev;
-    (void)szCmdLine;
-    (void)sw;
-
-    auto parseCommandLine = [](const char *src, u::vector<char *> &args) {
-        char *buf = new char[strlen(src) + 1];
-        char *dst = buf;
-        for (;;) {
-            while (isspace(*src))
-                src++;
-            if (!*src)
-                break;
-            args.push_back(dst);
-            for (bool quoted = false; *src && (quoted || !isspace(*src)); src++) {
-                if (*src != '"')
-                    *dst++ = *src;
-                else if (dst > buf && src[-1] == '\\')
-                    dst[-1] = '"';
-                else
-                    quoted = !quoted;
-            }
-            *dst++ = '\0';
-        }
-        args.push_back(nullptr);
-        return buf;
-    };
-    u::vector<char *> args;
-    char *buf = parseCommandLine(GetCommandLine(), args);
-    SDL_SetMainReady_();
-    int status = SDL_main(args.size() - 1, &args[0]);
-    delete[] buf;
-    exit(status);
-    return 0;
-}
-#endif
-
-static void verifyPaths(int argc, char **argv) {
-    // Check for command line '-gamedir'
-    --argc;
-    const char *directory = nullptr;
-    for (int i = 0; i < argc - 1; i++) {
-        if (!strcmp(argv[i + 1], "-gamedir") && argv[i + 2]) {
-            directory = argv[i + 2];
-            break;
-        }
-    }
-
-    gGamePath = directory ? directory : u::format(".%cgame%c", PATH_SEP, PATH_SEP);
-    if (gGamePath.find(PATH_SEP) == u::string::npos)
-        gGamePath += PATH_SEP;
-
-    // Get a path for the user
-    char *get = SDL_GetPrefPath_("Neothyne", "");
-    gUserPath = get;
-    gUserPath.pop_back(); // Remove additional path separator
-    SDL_free_(get);
-
-    // Verify all the paths exist for the user directory. If they don't exist
-    // create them.
-    static const char *paths[] = {
-        "screenshots", "cache"
-    };
-
-    for (size_t i = 0; i < sizeof(paths)/sizeof(*paths); i++) {
-        u::string path = gUserPath + paths[i];
-        if (u::exists(path, u::kDirectory))
-            continue;
-        u::mkdir(path);
-    }
-}
-
 ///
 /// On Window the entry point is entered as such:
-///     WinMain -> SDL_main -> main -> neoMain
+///     WinMain -> entryPoint -> neoMain
 /// For everywhere else:
-///     main -> neoMain
+///     main -> entryPoint -> neoMain
 ///
-extern int neoMain(frameTimer &timer, int argc, char **argv);
-int main(int argc, char **argv) {
+static int entryPoint(int argc, char **argv) {
+    extern int neoMain(frameTimer &timer, int argc, char **argv);
     // Load SDL
     if (!gSDL.load([]() -> bool {
         if (!(SDL_GetTicks_              = (PFNSDLGETTICKSPROC)gSDL("SDL_GetTicks")))                           return false;
@@ -610,13 +533,42 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    // Now try loading all the symbols
-
     // Must come after SDL is loaded
     gTimer.reset();
     gTimer.cap(frameTimer::kMaxFPS);
 
-    verifyPaths(argc, argv);
+    // Check for command line '-gamedir'
+    --argc;
+    const char *directory = nullptr;
+    for (int i = 0; i < argc - 1; i++) {
+        if (!strcmp(argv[i + 1], "-gamedir") && argv[i + 2]) {
+            directory = argv[i + 2];
+            break;
+        }
+    }
+
+    gGamePath = directory ? directory : u::format(".%cgame%c", PATH_SEP, PATH_SEP);
+    if (gGamePath.find(PATH_SEP) == u::string::npos)
+        gGamePath += PATH_SEP;
+
+    // Get a path for the user
+    char *get = SDL_GetPrefPath_("Neothyne", "");
+    gUserPath = get;
+    gUserPath.pop_back(); // Remove additional path separator
+    SDL_free_(get);
+
+    // Verify all the paths exist for the user directory. If they don't exist
+    // create them.
+    static const char *paths[] = {
+        "screenshots", "cache"
+    };
+
+    for (size_t i = 0; i < sizeof(paths)/sizeof(*paths); i++) {
+        u::string path = gUserPath + paths[i];
+        if (u::exists(path, u::kDirectory))
+            continue;
+        u::mkdir(path);
+    }
 
     readConfig();
 
@@ -650,3 +602,49 @@ int main(int argc, char **argv) {
     SDL_Quit_();
     return status;
 }
+
+// So we don't need to depend on SDL_main we provide our own
+#ifdef _WIN32
+#include <ctype.h>
+#include "u_vector.h"
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw) {
+    (void)hInst;
+    (void)hPrev;
+    (void)szCmdLine;
+    (void)sw;
+
+    auto parseCommandLine = [](const char *src, u::vector<char *> &args) {
+        char *buf = new char[strlen(src) + 1];
+        char *dst = buf;
+        for (;;) {
+            while (isspace(*src))
+                src++;
+            if (!*src)
+                break;
+            args.push_back(dst);
+            for (bool quoted = false; *src && (quoted || !isspace(*src)); src++) {
+                if (*src != '"')
+                    *dst++ = *src;
+                else if (dst > buf && src[-1] == '\\')
+                    dst[-1] = '"';
+                else
+                    quoted = !quoted;
+            }
+            *dst++ = '\0';
+        }
+        args.push_back(nullptr);
+        return buf;
+    };
+    u::vector<char *> args;
+    char *buf = parseCommandLine(GetCommandLine(), args);
+    SDL_SetMainReady_();
+    int status = entryPoint(args.size() - 1, &args[0]);
+    delete[] buf;
+    exit(status);
+    return 0;
+}
+#else
+int main(int argc, char **argv) {
+    return entryPoint(argc, argv);
+}
+#endif
