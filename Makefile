@@ -11,12 +11,11 @@ CXXFLAGS = \
 	-O3
 
 ENGINE_CXXFLAGS = \
-	$(CXXFLAGS) \
-	`sdl2-config --cflags`
+	$(CXXFLAGS)
 
 ENGINE_LDFLAGS = \
 	-lm \
-	`sdl2-config --libs`
+	-ldl
 
 GAME_SOURCES = \
 	game/menu.cpp \
