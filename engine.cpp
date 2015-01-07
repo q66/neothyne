@@ -23,7 +23,7 @@ private:
 static library gSDL("SDL2");
 
 // Engine globals
-static u::map<int, int> gKeyMap;
+static u::map<u::string, int> gKeyMap;
 static u::string gUserPath;
 static u::string gGamePath;
 static size_t gScreenWidth = 0;
@@ -33,7 +33,6 @@ static SDL_Window *gScreen = nullptr;
 static frameTimer gTimer;
 static u::map<u::string, void (*)()> gBinds;
 static u::string gTextInput;
-static bool gTextInputting = false;
 static mouseState gMouseState;
 
 // maximum resolution is 15360x8640 (8640p) (16:9)
@@ -321,7 +320,7 @@ uint32_t frameTimer::ticks() const {
     return m_currentTicks;
 }
 
-u::map<int, int> &neoKeyState(int key, bool keyDown, bool keyUp) {
+u::map<u::string, int> &neoKeyState(const u::string &key, bool keyDown, bool keyUp) {
     if (keyDown)
         gKeyMap[key]++;
     if (keyUp)
@@ -363,6 +362,7 @@ void neoSwap() {
 
     // Event dispatch
     char format[1024];
+    const char *keyName;
     SDL_Event e;
     while (SDL_PollEvent_(&e)) {
         switch (e.type) {
@@ -374,29 +374,16 @@ void neoSwap() {
             }
             break;
         case SDL_KEYDOWN:
-            snprintf(format, sizeof(format), "%sDn", SDL_GetKeyName_(e.key.keysym.sym));
+            keyName = SDL_GetKeyName_(e.key.keysym.sym);
+            snprintf(format, sizeof(format), "%sDn", keyName);
             callBind(format);
-            neoKeyState(e.key.keysym.sym, true);
-            // Engine console keys
-            switch (e.key.keysym.sym) {
-            case SDLK_BACKSPACE:
-                if (gTextInputting)
-                    gTextInput.pop_back();
-                break;
-            case SDLK_SLASH:
-                gTextInputting = !gTextInputting;
-                if (gTextInputting)
-                    SDL_StartTextInput_();
-                else
-                    SDL_StopTextInput_();
-                gTextInput = "";
-                break;
-            }
+            neoKeyState(keyName, true);
             break;
         case SDL_KEYUP:
-            snprintf(format, sizeof(format), "%sUp", SDL_GetKeyName_(e.key.keysym.sym));
+            keyName = SDL_GetKeyName_(e.key.keysym.sym);
+            snprintf(format, sizeof(format), "%sUp", keyName);
             callBind(format);
-            neoKeyState(e.key.keysym.sym, false, true);
+            neoKeyState(keyName, false, true);
             break;
         case SDL_MOUSEMOTION:
             gMouseState.x = e.motion.x;

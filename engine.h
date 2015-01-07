@@ -60,7 +60,7 @@ struct mouseState {
     int button;
 };
 
-u::map<int, int> &neoKeyState(int key = 0, bool keyDown = false, bool keyUp = false);
+u::map<u::string, int> &neoKeyState(const u::string &key = "", bool keyDown = false, bool keyUp = false);
 mouseState neoMouseState();
 void neoMouseDelta(int *deltaX, int *deltaY);
 void neoSwap();
